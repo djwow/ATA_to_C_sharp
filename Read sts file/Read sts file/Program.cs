@@ -10,6 +10,7 @@ using System.Threading;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Remote;
 using System.Text.RegularExpressions;
+using OpenQA.Selenium.Winium;
 
 
 namespace Read_sts_file
@@ -44,34 +45,164 @@ namespace Read_sts_file
             return Convert.ToInt32(span.TotalSeconds);
         }
 
-        public static bool LaunchDBP(string username, string password)
+        public static string GETSTRING(string str) //get value from dictionary by key
         {
-            var dc = new DesiredCapabilities();
+            try
+            {
+                return Dic[str].ToString();
+            }
+            catch
+            {
+                Console.WriteLine("Value does not found in dictionary");
+                return "";
+            }
+        }
+
+        public static bool LaunchDBP(string username, string password) //add session
+        {
+            bool DBPisReady = false;
+            StartWinium();
+            DesiredCapabilities dc = new DesiredCapabilities();
             dc.SetCapability("app", @"C:/Program Files/Mitel/MiVoiceOffice250/CS5000SessMngr.exe");
             dc.SetCapability("args", @"HX01 /USERNAME="+username+" /PASSWORD="+password);
             dc.SetCapability("launchDelay", "3000");
-            Console.WriteLine("Start DBP");
-            var driver = new RemoteWebDriver(new Uri("http://localhost:9999"), dc);
-            /////////////////////
-            var window = driver.FindElementByName("HX01 - Session Starting"); //HX01 - Session Starting
-            while (window != null)
-            {
 
-                Thread.Sleep(2000);
-                Console.WriteLine("sleep1");
+            Console.WriteLine("Start DBP");
+
+            RemoteWebDriver driver = new RemoteWebDriver(new Uri("http://localhost:9999"), dc);
+            //var driver = new RemoteWebDriver(new Uri("http://localhost:9999"), dc);
+            /////////////////////
+            //var window = driver.FindElementByName("HX01 - Session Starting"); //HX01 - Session Starting
+            //var window = driver.FindElementsByClassName("ControlType.Window");
+            Thread.Sleep(3000);
+            var window = driver.FindElement(By.ClassName("#32770"));
+
+            //var MainWindow = driver.FindElement(By.ClassName("ATL:0000000140044350"));
+
+            /*
+            Console.WriteLine("////////////");
+            Console.WriteLine(window.GetAttribute("Name"));
+            Console.WriteLine(sGETSTRING(window.GetAttribute("Name")));
+            Console.WriteLine("////////////");
+            Console.WriteLine(window.GetAttribute("Name").Replace("HX01 - ", ""));
+            Console.WriteLine(sGETSTRING(window.GetAttribute("Name").Replace("HX01 - ", "")));
+            //Console.WriteLine(GetKeyByValue(window.GetAttribute("Name")));
+            */
+            while (DBPisReady == false)
+            {
+               /* if (MainWindow.Displayed == true)
+                {
+                    DBPisReady = true;
+                }*/
+                window = driver.FindElement(By.ClassName("#32770"));
+                switch (sGETSTRING(window.GetAttribute("Name").Replace("HX01 - ", ""))) //change to session
+                {
+                    case "IDS_DLG_DATABASE_PROGRAMMING":
+                        {
+                            Console.WriteLine("IDS_DLG_GENERAL_POPUP");
+                            var text = window.FindElement(By.Id("65535"));
+                            switch (sGETSTRING(text.GetAttribute("Name")))
+                            {
+                                case "IDS_DLG_DATABASE_PROGRAMMING_PRIMARY_ATTENDANT":
+                                    {
+                                        Console.WriteLine("IDS_DLG_DATABASE_PROGRAMMING_PRIMARY_ATTENDANT");
+                                        window.FindElement(By.Name(GETSTRING("IDS_BTN_NO"))).Click();
+                                        Thread.Sleep(3000);
+                                        break;
+                                    }
+                                case "IDS_TXT_TIME_ZONE_MSG":
+                                    {
+                                        Console.WriteLine("IDS_TXT_TIME_ZONE_MSG");
+                                        window.FindElement(By.Name(GETSTRING("IDS_BTN_OK"))).Click();
+                                        Thread.Sleep(3000);
+                                        break;
+                                    }
+
+                                default:
+                                    {
+                                        Console.WriteLine("default1");
+                                        Thread.Sleep(3000);
+                                        break;
+                                    }
+                            }
+                            break;
+                        }
+                    case "IDS_DLG_GENERAL_POPUP":
+                        {
+                            Console.WriteLine("IDS_DLG_GENERAL_POPUP");
+                            //window.FindElement(By.Name(GETSTRING("IDS_BTN_NO"))).Click();
+                            Thread.Sleep(3000);
+                            break;
+                        }
+                    case "IDS_DLG_SESSION_STARTING":
+                        {
+                            Console.WriteLine("IDS_DLG_SESSION_STARTING");
+                            Thread.Sleep(3000);
+                            break;
+                        }
+                    default:
+                        {
+                            Console.WriteLine("default");
+                            Thread.Sleep(3000);
+                            break;
+                        }
+                }
+            }
+            Console.WriteLine("00000000000000000000000000000");
+            Console.ReadLine();
+
+
+            /*while (true)
+            {
                 try
                 {
-                    window = driver.FindElementByName("HX01 - Session Starting");
+                    window = driver.FindElement(By.ClassName("#32770"));
                 }
                 catch
                 {
-                    Console.WriteLine("Exit");
-                    break;
+                    Thread.Sleep(1000);
+                    Console.WriteLine("sleep0");
+                }
+                if (window != null)
+                {
+                    if (window.FindElement(By.Name("HX01 - Session Starting")) != null)
+                    {
+                        Thread.Sleep(2000);
+                        Console.WriteLine("sleep1");
+                    }
+
+
+                    else if (window.FindElement(By.Name("Database Programming")) != null)
+                    {
+                        Console.WriteLine("sleep2");
+                        window.FindElement(By.Name("No")).Click();
+                    }
+
+                    else
+                    {
+                        Console.WriteLine("Exit");
+                        break;
+                    }
+                    /*Thread.Sleep(2000);
+                    Console.WriteLine("sleep1");
+                    try
+                    {
+                        window = driver.FindElementByName("HX01 - Session Starting");
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Exit");
+                        break;
+                    }
+
                 }
 
-
+                else
+                {
+                    Console.WriteLine("wait");
+                    Thread.Sleep(2000);
+                }
             }
-
       /*      window = driver.FindElementByName("Database Programming");   //Database programming
             driver.FindElementByName("OK").Click();
             Thread.Sleep(2000);
@@ -89,11 +220,50 @@ namespace Read_sts_file
                     Console.WriteLine("error");
                     break;
                 }
-            }*/
+            }
+            try
+            {
+                List<Ele> wrkL = driver.findElements(By.className("ControlType.Window"));
+                WebElement wrk1 = wrk.findElement(By.name("Database Programming"));
+            }
+            catch
+            {
+                Console.WriteLine("error0");
+                break;
+            }
+           
+            
+            var winFinder = By.Name("Database Programming").AndType(ControlType.Window);
+            var win = Winium.Cruciatus.CruciatusFactory.Root.FindElement(winFinder);
+            win.FindElementByName("No").Click();
+            */
 
-            window = driver.FindElementByName("Database Programming");   //Database programming
+            var window1 = driver.FindElement(By.Name("Database Programming"));
+            window1.FindElement(By.Name("No")).Click();
+            //driver.FindElementByName("No").Click();
+            Thread.Sleep(2000);
+
+            /*
+            while (window != null)
+            {
+                Thread.Sleep(1000);
+                Console.WriteLine("sleep2");
+                try
+                {
+                    window = driver.FindElementByName("Database Programming");
+                }
+                catch
+                {
+                    Console.WriteLine("Exit");
+                    break;
+                }
+            }
+            */
+
+            Console.WriteLine("Database Programming");
             driver.FindElementByName("No").Click();
             Thread.Sleep(2000);
+
            /* window = driver.FindElementByName("HX01 - Session Starting"); //HX1 - Session Starting
             while (window != null)
             {
@@ -268,7 +438,7 @@ namespace Read_sts_file
                                     Console.WriteLine("VO: Load database"); //[DATABASE]
                                     sr.Close();
                                     Thread.Sleep(100);
-                                    File.Delete(CMDFile);
+                                    //File.Delete(CMDFile); //uncomment
                                     return;
                                 case "ADDSTRING":
                                     Console.WriteLine("!!!ADDSTRING");
@@ -276,7 +446,7 @@ namespace Read_sts_file
                                     {
                                         if (!Dic.ContainsKey(match.Groups["wparam"].Value.ToString())) ;
                                         Dic.Add(match.Groups["wparam"].Value.ToString(),
-                                            match.Groups["lparam"].Value.ToString().Trim('"'));
+                                            match.Groups["lparam"].Value.ToString().Trim('"').Replace("\\x0a", "\r\n").Replace("\\x95", "•").Replace("\\x92", "’"));
                                     }
                                     break;
                                 case "SYNC":
@@ -355,14 +525,33 @@ namespace Read_sts_file
             return match;
         }*/
 
+        public static string sGETSTRING(string value) //get key from dictionary by value
+        {
+            foreach (var recordOfDictionary in Dic)
+            {
+                if (recordOfDictionary.Value.Equals(value))
+                    return recordOfDictionary.Key;
+            }
+            return null;
+        }
+
         public static void Main()
         {
             //EmulateVTServer();
-            
-            
 
             Test();
-
+            Console.WriteLine("start sess");
+            LaunchDBP("admin", "root123");
+            //Console.ReadLine();
+            
+            //Console.WriteLine("dictionary");
+            //Console.WriteLine(Dic["IDS_DLG_GENERAL_POPUP"].ToString());
+            //Console.WriteLine("dictionary1111111");
+            //Console.WriteLine(GETSTRING("IDS_DLG_DATABASE_PROGRAMMING_PRIMARY_ATTENDANT"));
+            
+            //Console.WriteLine(Dic.["IDS_DLG_GENERAL_POPUP"].ToString());
+            //Console.ReadLine();
+           
             //Console.ReadLine();
             //StartWinium();
             //EmulateVTServer();
