@@ -24,6 +24,7 @@ namespace Read_sts_file
         public static string SessionManager = "C:/Program Files/Mitel/MiVoiceOffice250/CS5000SessMngr.exe";
         public static Dictionary<string,string> Dic = new Dictionary<string, string>();
         public static Dictionary<string, string> SessionsDictionary= new Dictionary<string, string>();
+        public static RemoteWebDriver driver = null;
         
         public static void StartWinium()
         {
@@ -54,29 +55,45 @@ namespace Read_sts_file
             catch
             {
                 Console.WriteLine("Value does not found in dictionary");
-                return "";
+                return null;
             }
         }
 
-        public static bool LaunchDBP(string username, string password) //add session
+        public static string sGETSTRING(string value) //get key from dictionary by value
+        {
+            foreach (var recordOfDictionary in Dic)
+            {
+                if (recordOfDictionary.Value.Equals(value))
+                    return recordOfDictionary.Key;
+            }
+            return null;
+        }
+
+        public static IList<IWebElement> GETListOfWindows()
+        {
+            return driver.FindElements(By.XPath("/*[contains(@ControlType,'ControlType.Window') and not (contains(@Name,'perl.exe'))]"));
+        }
+
+        public static bool LaunchDBP(string username, string password, string session) //add session
         {
             bool DBPisReady = false;
             StartWinium();
             DesiredCapabilities dc = new DesiredCapabilities();
             dc.SetCapability("app", @"C:/Program Files/Mitel/MiVoiceOffice250/CS5000SessMngr.exe");
-            dc.SetCapability("args", @"HX01 /USERNAME="+username+" /PASSWORD="+password);
+            dc.SetCapability("args", @""+session+" /USERNAME="+username+" /PASSWORD="+password);
             dc.SetCapability("launchDelay", "3000");
 
             Console.WriteLine("Start DBP");
 
-            RemoteWebDriver driver = new RemoteWebDriver(new Uri("http://localhost:9999"), dc);
+            driver = new RemoteWebDriver(new Uri("http://localhost:9999"), dc);
+            driver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds(10));
             //var driver = new RemoteWebDriver(new Uri("http://localhost:9999"), dc);
             /////////////////////
             //var window = driver.FindElementByName("HX01 - Session Starting"); //HX01 - Session Starting
             //var window = driver.FindElementsByClassName("ControlType.Window");
             Thread.Sleep(3000);
             var window = driver.FindElement(By.ClassName("#32770"));
-
+            IWebElement text, mainwindow = null;
             //var MainWindow = driver.FindElement(By.ClassName("ATL:0000000140044350"));
 
             /*
@@ -88,69 +105,94 @@ namespace Read_sts_file
             Console.WriteLine(sGETSTRING(window.GetAttribute("Name").Replace("HX01 - ", "")));
             //Console.WriteLine(GetKeyByValue(window.GetAttribute("Name")));
             */
+            string name, replacename;
+            IList<IWebElement> ListOfWindows = GETListOfWindows();
+            IList<IWebElement> ListOfElements;
+            foreach (IWebElement list in ListOfWindows)
+                {
+                    if (list.GetAttribute("Name") == session + " - " + GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))
+                    {
+                        DBPisReady = true;
+                        mainwindow = driver.FindElementByName(session + " - " + GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
+                    }
+                }
+
             while (DBPisReady == false)
             {
-               /* if (MainWindow.Displayed == true)
-                {
-                    DBPisReady = true;
-                }*/
-                window = driver.FindElement(By.ClassName("#32770"));
-                switch (sGETSTRING(window.GetAttribute("Name").Replace("HX01 - ", ""))) //change to session
-                {
-                    case "IDS_DLG_DATABASE_PROGRAMMING":
-                        {
-                            Console.WriteLine("IDS_DLG_GENERAL_POPUP");
-                            var text = window.FindElement(By.Id("65535"));
-                            switch (sGETSTRING(text.GetAttribute("Name")))
-                            {
-                                case "IDS_DLG_DATABASE_PROGRAMMING_PRIMARY_ATTENDANT":
-                                    {
-                                        Console.WriteLine("IDS_DLG_DATABASE_PROGRAMMING_PRIMARY_ATTENDANT");
-                                        window.FindElement(By.Name(GETSTRING("IDS_BTN_NO"))).Click();
-                                        Thread.Sleep(3000);
-                                        break;
-                                    }
-                                case "IDS_TXT_TIME_ZONE_MSG":
-                                    {
-                                        Console.WriteLine("IDS_TXT_TIME_ZONE_MSG");
-                                        window.FindElement(By.Name(GETSTRING("IDS_BTN_OK"))).Click();
-                                        Thread.Sleep(3000);
-                                        break;
-                                    }
 
-                                default:
-                                    {
-                                        Console.WriteLine("default1");
-                                        Thread.Sleep(3000);
-                                        break;
-                                    }
+                //window = driver.FindElement(By.ClassName("#32770"));
+                ListOfWindows = GETListOfWindows();
+                foreach (IWebElement list in ListOfWindows)
+                {
+                    name = list.GetAttribute("Name");
+                    replacename = list.GetAttribute("Name").Replace(session + " - ", "");
+                    Console.WriteLine(list.GetAttribute("Name"));
+
+                    //switch (sGETSTRING(window.GetAttribute("Name").Replace(session + " - ", ""))) //change to session
+                    switch (sGETSTRING(list.GetAttribute("Name").Replace(session + " - ", ""))) 
+                    {
+                        case "IDS_DLG_DATABASE_PROGRAMMING":
+                            {
+
+
+                                Console.WriteLine("IDS_DLG_GENERAL_POPUP");
+                                text = list.FindElement(By.Id("65535"));   ////////////change to all text on window ListOfWindows = driver.FindElements(By.XPath("/*[contains(@ControlType,'ControlType.Text')]"));
+                                switch (sGETSTRING(text.GetAttribute("Name")))
+                                {
+                                    case "IDS_DLG_DATABASE_PROGRAMMING_PRIMARY_ATTENDANT":
+                                        {
+                                            Console.WriteLine("IDS_DLG_DATABASE_PROGRAMMING_PRIMARY_ATTENDANT");
+                                            list.FindElement(By.Name(GETSTRING("IDS_BTN_NO"))).Click();
+                                            Thread.Sleep(1000);
+                                            break;
+                                        }
+                                    case "IDS_TXT_TIME_ZONE_MSG":
+                                        {
+                                            Console.WriteLine("IDS_TXT_TIME_ZONE_MSG");
+                                            list.FindElement(By.Name(GETSTRING("IDS_BTN_OK"))).Click();
+                                            Thread.Sleep(1000);
+                                            break;
+                                        }
+
+                                    default:
+                                        {
+                                            Console.WriteLine("default1");
+                                            Thread.Sleep(1000);
+                                            break;
+                                        }
+                                }
+                                break;
                             }
-                            break;
-                        }
-                    case "IDS_DLG_GENERAL_POPUP":
-                        {
-                            Console.WriteLine("IDS_DLG_GENERAL_POPUP");
-                            //window.FindElement(By.Name(GETSTRING("IDS_BTN_NO"))).Click();
-                            Thread.Sleep(3000);
-                            break;
-                        }
-                    case "IDS_DLG_SESSION_STARTING":
-                        {
-                            Console.WriteLine("IDS_DLG_SESSION_STARTING");
-                            Thread.Sleep(3000);
-                            break;
-                        }
-                    default:
-                        {
-                            Console.WriteLine("default");
-                            Thread.Sleep(3000);
-                            break;
-                        }
+                        case "IDS_DLG_GENERAL_POPUP":
+                            {
+                                Console.WriteLine("IDS_DLG_GENERAL_POPUP");
+                                //window.FindElement(By.Name(GETSTRING("IDS_BTN_NO"))).Click();
+                                Thread.Sleep(3000);
+                                break;
+                            }
+                        case "IDS_DLG_SESSION_STARTING":
+                            {
+                                Console.WriteLine("IDS_DLG_SESSION_STARTING");
+                                Thread.Sleep(3000);
+                                break;
+                            }
+                        default:
+                            {
+                                Console.WriteLine("default");
+                                break;
+                            }
+                    }
+                }
+                ListOfWindows = GETListOfWindows();
+                foreach (IWebElement list in ListOfWindows)
+                {
+                    if (list.GetAttribute("Name") == session + " - " + GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))
+                    {
+                        DBPisReady = true;
+                        mainwindow = driver.FindElement(By.Name(session + " - " + GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")));
+                    }
                 }
             }
-            Console.WriteLine("00000000000000000000000000000");
-            Console.ReadLine();
-
 
             /*while (true)
             {
@@ -236,7 +278,7 @@ namespace Read_sts_file
             var winFinder = By.Name("Database Programming").AndType(ControlType.Window);
             var win = Winium.Cruciatus.CruciatusFactory.Root.FindElement(winFinder);
             win.FindElementByName("No").Click();
-            */
+            
 
             var window1 = driver.FindElement(By.Name("Database Programming"));
             window1.FindElement(By.Name("No")).Click();
@@ -258,7 +300,7 @@ namespace Read_sts_file
                     break;
                 }
             }
-            */
+            
 
             Console.WriteLine("Database Programming");
             driver.FindElementByName("No").Click();
@@ -279,19 +321,20 @@ namespace Read_sts_file
                     break;
                 }
             }
-            */
+            
             window = driver.FindElementByName("Database Programming"); //Database programming
             driver.FindElementByName("OK").Click();
             
             Thread.Sleep(2000);
             window = driver.FindElementByClassName("ATL:0000000140044350");  // HX1 - MiVoice Office 250 DB Programmin
+            */
+            //driver.SwitchTo().Window(mainwindow.GetAttribute("name").ToString());
 
-            window.FindElement(By.Name("Operations")).Click();
-            window.FindElement(By.Name("Backup Operations")).Click();
-            window.FindElement(By.Name("Save Backup...")).Click();
+            driver.FindElement(By.Name("Operations")).Click();
+            driver.FindElement(By.Name("Backup Operations")).Click();
+            driver.FindElement(By.Name("Save Backup...")).Click();
 
             driver.Quit();
-            Console.ReadLine();
             return true;
         }
 
@@ -364,11 +407,11 @@ namespace Read_sts_file
             
             //******************************************************************************
 
-
+            Console.WriteLine("VO: 4eto ne tuda");
             Thread.Sleep(900000);
             fs.Close();
             Console.WriteLine("VO: Unlock file");
-
+            driver.Quit();
             /*while (true)
             {
                 if (File.Exists(CMDFile ))
@@ -402,7 +445,7 @@ namespace Read_sts_file
         public static void Test()
         {
             string CMDFile = @"C:\\temp\\VTServer.cmd";
-            string command, line = " ";
+            string command, parameters, line = " ";
             Match match;
             try
             {
@@ -419,6 +462,7 @@ namespace Read_sts_file
                             {
                                 match = ParseString(line);
                                 command = match.Groups["command"].Value.ToString();
+                                parameters = match.Groups["wparam"].Value.ToString();
                             }
                             else
                             {
@@ -471,13 +515,17 @@ namespace Read_sts_file
                                         match.Groups["lparam"].Value.ToString().Trim('"'));
                                     }
                                     sr.Close();
-                                    Thread.Sleep(100);
-                                    File.Delete(CMDFile);
-                                    break;
+                                    using (StreamWriter outputFile = new StreamWriter(STSFile, true))
+                                    {
+                                        outputFile.WriteLine(ConvertToTimestamp() + " SERVER: INFO: Configuring session" + match.Groups["wparam"].Value.ToString() + "HASVP key to 1");
+                                        Thread.Sleep(100);
+                                        File.Delete(CMDFile);
+                                    }
+                                    return;
                                 case "STARTSESSION":
                                     Console.WriteLine("!!!STARTSESSION");
                                     match = ParseSession(match.Groups["lparam"].Value.ToString());
-                                    LaunchDBP(match.Groups["username"].Value.ToString(), (match.Groups["password"].Value.ToString()));
+                                    LaunchDBP(match.Groups["username"].Value.ToString(), match.Groups["password"].Value.ToString(), parameters); 
 
                                     //File.Delete(CMDFile); //umcomment
                                     return;
@@ -525,23 +573,16 @@ namespace Read_sts_file
             return match;
         }*/
 
-        public static string sGETSTRING(string value) //get key from dictionary by value
-        {
-            foreach (var recordOfDictionary in Dic)
-            {
-                if (recordOfDictionary.Value.Equals(value))
-                    return recordOfDictionary.Key;
-            }
-            return null;
-        }
+
 
         public static void Main()
         {
+
             //EmulateVTServer();
 
             Test();
             Console.WriteLine("start sess");
-            LaunchDBP("admin", "root123");
+            LaunchDBP("admin", "root123", "HX01");
             //Console.ReadLine();
             
             //Console.WriteLine("dictionary");
