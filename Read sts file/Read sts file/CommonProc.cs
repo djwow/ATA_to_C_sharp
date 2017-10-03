@@ -7,8 +7,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Remote;
 using System.Threading;
 using System.Text.RegularExpressions;
-//using Winium.Cruciatus.Core;
-//using Winium.Cruciatus.Extensions;
+using System.IO;
 
 namespace Read_sts_file
 {
@@ -16,10 +15,11 @@ namespace Read_sts_file
     {
         public static IWebElement text, mainwindow = null;
         public static string name, replacename;
-        public static IList<IWebElement> ListOfWindows = Program.GETListOfWindows();
+        public static IList<IWebElement> ListOfWindows;
         public static IList<IWebElement> ListOfElements;
         public static bool DBPisReady = false;
-        public static bool LaunchDBP(string username, string password, string session) //add session
+
+        public static bool LaunchDBP(string username, string password, string session)
         {
             Program.StartWinium();
             DesiredCapabilities dc = new DesiredCapabilities();
@@ -488,14 +488,22 @@ namespace Read_sts_file
                         default:
                             {
                                 Console.WriteLine("default");
+                                if (list.GetAttribute("Name") == session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))
+                                {
+                                    Console.WriteLine("3333333333333333333333333333");
+                                    DBPisReady = true;
+                                    mainwindow = Program.driver.FindElementByName(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
+                                    Program.driver.FindElementByName(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")).Click();
+                                }
                                 break;
                             }
                     }
                     if (list.GetAttribute("Name") == session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))
                     {
+                        Console.WriteLine("111111111111111111111111");
                         DBPisReady = true;
                         mainwindow = Program.driver.FindElementByName(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
-                        Program.driver.SwitchTo().Window(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
+                        Program.driver.FindElementByName(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")).Click();
                     }
                 }
                 ListOfWindows = Program.GETListOfWindows();
@@ -503,6 +511,7 @@ namespace Read_sts_file
                 {
                     if (list.GetAttribute("Name") == session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))
                     {
+                        Console.WriteLine("222222222222222222222");
                         DBPisReady = true;
                         mainwindow = Program.driver.FindElement(By.Name(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")));
                     }
@@ -510,8 +519,8 @@ namespace Read_sts_file
             }
 
             /////////////////////////////////////////delete
-            Program.SessionsDictionary.Add("HX01", "{\"ARCHIVE\"=>\"C:/AXX/HX04/62/H62/USA\",\"HASVP\"=>\"1\",\"LANGUAGE\"=>\"USA\",\"PASSWORD\"=>\"root123\",\"PRODUCT\"=>\"HX5000_6_2\",\"USERNAME\"=>\"admin\"}");
-            Program.SessionsDictionary.Add("HX02", "{\"ARCHIVE\"=>\"C:/AXX/HX02/62/H62/USA\",\"HASVP\"=>\"1\",\"LANGUAGE\"=>\"USA\",\"PASSWORD\"=>\"root123\",\"PRODUCT\"=>\"HX5000_6_2\",\"USERNAME\"=>\"admin\"}");
+            //Program.SessionsDictionary.Add("HX01", "{\"ARCHIVE\"=>\"C:/AXX/HX04/62/H62/USA\",\"HASVP\"=>\"1\",\"LANGUAGE\"=>\"USA\",\"PASSWORD\"=>\"root123\",\"PRODUCT\"=>\"HX5000_6_2\",\"USERNAME\"=>\"admin\"}");
+            //Program.SessionsDictionary.Add("HX02", "{\"ARCHIVE\"=>\"C:/AXX/HX02/62/H62/USA\",\"HASVP\"=>\"1\",\"LANGUAGE\"=>\"USA\",\"PASSWORD\"=>\"root123\",\"PRODUCT\"=>\"HX5000_6_2\",\"USERNAME\"=>\"admin\"}");
             /////////////////////////////////////////
             Match MatchSession = Program.ParseSession(Program.SessionsDictionary[session].ToString());
             Program.WriteToSTS("WARN: systemdbprog_bSessionActivate: Session '" + session + "' is not launched");
@@ -527,30 +536,25 @@ namespace Read_sts_file
             Program.WriteToSTS("INFO: systemdbprog_bCLISessionLaunch: Launching session '" + session + "'");
             Program.WriteToSTS("INFO: systemdbprog_bCLISessionLaunch: Executing '" + Program.SessionManager + " " + session + " /USERNAME=" + username + " /PASSWORD=" + password + "'");
             Thread.Sleep(100);
-            //File.Delete(CMDFile); //uncomment
+            //File.Delete(Program.CMDFile); //uncomment
 
-            Program.driver.FindElement(By.Name("Operations")).Click();
-            Program.driver.FindElement(By.Name("Backup Operations")).Click();
-            Program.driver.FindElement(By.Name("Save Backup...")).Click();
-
-            Program.driver.Quit();
-            Program.driver.Close();
             return true;
         }
 
 
-        public static void WindowsHandle (RemoteWebDriver driver, string session)
+        public static void WindowsHandle (string session)
         {
             IWebElement text, mainwindow = null;
             string name, replacename;
-            IList<IWebElement> ListOfWindows = Program.GETListOfWindows();
+            IList<IWebElement> ListOfWindows = Program.GETListOfDialogs();
             IList<IWebElement> ListOfElements;
+
             foreach (IWebElement list in ListOfWindows)
             {
                 name = list.GetAttribute("Name");
                 replacename = list.GetAttribute("Name").Replace(session + " - ", "");
                 Console.WriteLine(list.GetAttribute("Name"));
-
+                
                 //switch (Program.sProgram.GETSTRING(window.GetAttribute("Name").Replace(session + " - ", ""))) //change to session
                 switch (Program.sGETSTRING(list.GetAttribute("Name").Replace(session + " - ", "")))
                 {
@@ -998,8 +1002,8 @@ namespace Read_sts_file
                 if (list.GetAttribute("Name") == session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))
                 {
                     DBPisReady = true;
-                    mainwindow = driver.FindElementByName(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
-                    driver.SwitchTo().Window(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
+                    mainwindow = Program.driver.FindElementByName(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
+                    Program.driver.SwitchTo().Window(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"));
                 }
             }
             ListOfWindows = Program.GETListOfWindows();
@@ -1008,7 +1012,7 @@ namespace Read_sts_file
                 if (list.GetAttribute("Name") == session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))
                 {
                     DBPisReady = true;
-                    mainwindow = driver.FindElement(By.Name(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")));
+                    mainwindow = Program.driver.FindElement(By.Name(session + " - " + Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")));
                 }
             }
 

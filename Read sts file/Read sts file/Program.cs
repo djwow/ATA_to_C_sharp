@@ -77,13 +77,38 @@ namespace Read_sts_file
             return driver.FindElements(By.XPath("/*[contains(@ControlType,'ControlType.Window') and not (contains(@Name,'perl.exe'))]"));
         }
 
+        public static bool GETListOfPath(IWebElement Window, string Name)
+        {
+            try
+            {
+
+                if (Window.FindElement(By.ClassName("ToolbarWindow32")).FindElement(By.XPath("/*[contains(@Name,'" + Name + "')]")) != null)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static IList<IWebElement> GETListOfDialogs()
+        {
+            return driver.FindElements(By.ClassName("#32770"));
+        }
+
         public static void CountWindows (RemoteWebDriver driver, string session)
         {
-            if (windowsCount > GETListOfWindows().Count)
+            if (windowsCount < GETListOfWindows().Count)
             {
                 Console.WriteLine(windowsCount);
-                   
-                
+
+                CommonProc.WindowsHandle(session);
 
                 windowsCount = GETListOfWindows().Count;
             }
@@ -99,6 +124,7 @@ namespace Read_sts_file
             {
                 outputFile.WriteLine(ConvertToTimestamp() + " " + message);
                 Thread.Sleep(100);
+                //outputFile.Close();
                 //File.Delete(CMDFile);
             }
         }
@@ -130,51 +156,7 @@ namespace Read_sts_file
             }
 
           
-            /*
-            using (File.Create(STSFile)) { }
-            Console.WriteLine("VO: Load database"); //[DATABASE]
-            Thread.Sleep(1000);
-            File.Delete(CMDFile);
-
-            Thread.Sleep(2000);*/
-            
-            //Test(); 
-
-            /*
-            using (StreamWriter outputFile = new StreamWriter(STSFile, true))
-            {
-                Console.WriteLine("VO: Sync " + ConvertToTimestamp()); //[SYNC]
-                outputFile.WriteLine(ConvertToTimestamp() + " SERVER: SYNC");
-                Thread.Sleep(1000);
-                File.Delete(CMDFile);
-            }
-
-            Thread.Sleep(1000);
-            //******************************************************************************
-
-            using (StreamWriter outputFile = new StreamWriter(STSFile, true))
-            {
-                Console.WriteLine("VO: Parce data for logining to DBP " + ConvertToTimestamp()); //Create definitions for sessions
-                outputFile.WriteLine(ConvertToTimestamp() + " INFO: Configuring session HX01 HASVP key to 1");
-                outputFile.WriteLine(ConvertToTimestamp() + " INFO: Configuring session HX01 USERNAME key to admin");
-                outputFile.WriteLine(ConvertToTimestamp() + " INFO: Configuring session HX01 PASSWORD key to root123");
-                Thread.Sleep(1000);
-                File.Delete(CMDFile);
-            }
-
-            //code for parce command for DBP
-            //******************************************************************************
-
-            */
-
-
-            //LaunchDBP("111", "111");
-
-
-            
-            //******************************************************************************
-
-            Thread.Sleep(900000);
+            //Thread.Sleep(900000);
             fs.Close();
             Console.WriteLine("VO: Unlock file");
             driver.Quit();
@@ -210,9 +192,10 @@ namespace Read_sts_file
         
         public static void Test()
         {
-            ////////////////////////////////////////////////////////////
-
+            //////////////////////////////////////////////////////////////comment
+            
             StartWinium();
+            /*
             DesiredCapabilities dc = new DesiredCapabilities();
             dc.SetCapability("app", SessionManager);
             dc.SetCapability("args", @" HX01  /USERNAME=admin /PASSWORD=root123");
@@ -221,13 +204,16 @@ namespace Read_sts_file
             Console.WriteLine("Start DBP");
 
             driver = new RemoteWebDriver(new Uri("http://localhost:9999"), dc);
-            Thread.Sleep(5000);
-
+            Thread.Sleep(5000);*/
+            //string CMDFile = @"C:\\temp\\VTServer.cmd";
+             
             ///////////////////////////////////////////////////////////////
 
-            string CMDFile = @"C:\\temp\\VTServer.cmd";
+            
             string command, parameters, line = " ";
-            Match match;
+            IWebElement Window, SysListView32 = null;
+            Match match, cell, MatchSysTreeView32;
+            string row = "";
             try
             {
                 Console.WriteLine("Read CMDFile file");
@@ -237,7 +223,15 @@ namespace Read_sts_file
                     {
                         if (File.Exists(CMDFile))
                         {
-                            line = sr.ReadLine();
+                            try
+                            {
+                                line = sr.ReadLine();
+                            }
+                            catch
+                            {
+                                Thread.Sleep(100);
+                                break;
+                            }
                             Console.WriteLine(line);
                             if (line != null)
                             {
@@ -265,9 +259,9 @@ namespace Read_sts_file
                                     {
                                     }
                                     Console.WriteLine("VO: Load database"); //[DATABASE]
-                                    //sr.Close();
+                                    sr.Close(); //uncomment
                                     Thread.Sleep(100);
-                                    //File.Delete(CMDFile); //uncomment
+                                    File.Delete(CMDFile); //uncomment
                                     break;//return;
                                 case "ADDSTRING":
                                     Console.WriteLine("!!!ADDSTRING");
@@ -286,29 +280,112 @@ namespace Read_sts_file
                                     Thread.Sleep(100);
                                     File.Delete(CMDFile);
                                     return;
+                               case "RESET":
+                                    Console.WriteLine("!!!RESET");
+                                    WriteToSTS("INFO: Resetting session " + parameters);
+                                    WriteToSTS("SERVER: EOF");
+                                    sr.Close();
+                                    File.Delete(CMDFile);
+                                    break;
                                 case "WRITE":
+                                    driver.Manage().Timeouts().ImplicitlyWait(TimeSpan.FromSeconds(3));
                                     Console.WriteLine("!!!WRITE");
                                     ParseWriteCommand(line);
-
-                                    foreach(KeyValuePair<string, string> item in WriteCommandDictionary)
+                                    
+                                    Window = driver.FindElement(By.XPath("/*[contains(@ControlType,'ControlType.Window') and (contains(@Name,'"+parameters+" - "+Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")+"'))]")); //hx01 change to parameters
+                                    string previuskey = "", previusvalue = "";
+                                    foreach (var y in WriteCommandDictionary)
+                                            {
+                                                if (previusvalue != y.Value.ToString() && previusvalue != "")
+                                                {
+                                                    previusvalue = y.Value.ToString();
+                                                    break;
+                                                }
+                                                else
+                                                {
+                                                    previusvalue = y.Value.ToString();
+                                                    previuskey = y.Key.ToString();
+                                                }
+                                            }
+                                    string path = "";
+                                    foreach (KeyValuePair<string, string> item in WriteCommandDictionary)  //add verify path on top window
                                     {
+                                        
                                         Console.WriteLine(item.Key);
                                         switch (item.Value)
-                                        {
-                                            case "SubView":
-                                                IWebElement Winn = driver.FindElement(By.XPath("/*[contains(@ControlType,'ControlType.Window') and (contains(@Name,'HX01 - "+Program.GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING")+"'))]")); //hx01 change to parameters
-                                                IWebElement SubView = Winn.FindElement(By.ClassName("SysTreeView32"));
-                                                new Actions(driver).DoubleClick(SubView.FindElement(By.Name(GETSTRING(item.Key)))).Perform();
-                                                break;
-                                            //case "":
+                                            {
+                                                case "SubView":
+                                                    Console.WriteLine("SubView");
+                                                    //CommonProc.WindowsHandle(parameters);
+                                                    IWebElement SysTreeView32 = Window.FindElement(By.ClassName("SysTreeView32"));
+                                                    Console.WriteLine("Current: "+item.Key.ToString());
+                                                    path = path + "\\" + GETSTRING(item.Key);
+                                                    //IList<IWebElement> ToolbarButtons = GETListOfPath();
+                                                    if (!GETListOfPath(Window,GETSTRING(item.Key)))
+                                                    {
 
+                                                        if (item.Key.ToString() == previuskey)
+                                                        {
+                                                            SysTreeView32.FindElement(By.Name(GETSTRING(item.Key))).Click();
+                                                            WriteToSTS(path);
+                                                        }
+                                                        else
+                                                        {
+                                                            new Actions(driver).DoubleClick(SysTreeView32.FindElement(By.Name(GETSTRING(item.Key)))).Perform();
+                                                            if (GETListOfDialogs().Count > 0)
+                                                            {
+                                                                CommonProc.WindowsHandle(parameters);
+                                                                new Actions(driver).DoubleClick(SysTreeView32.FindElement(By.Name(GETSTRING(item.Key)))).Perform();
+                                                            }
 
-                                            default:
-                                                Console.WriteLine("Write -> default");
-                                                break;
+                                                        }
+                                                    }
+                                                    break;
+                                                case "Row":
+                                                    Window.Click();
+                                                    SysListView32 = Window.FindElement(By.ClassName("SysListView32"));
+                                                    Console.WriteLine("Row");
+                                                    IList<IWebElement> rows = SysListView32.FindElements(By.Name(GETSTRING(item.Key)));
+                                                    Thread.Sleep(500);
+                                                    foreach (IWebElement y in rows)
+                                                    {
+                                                         if (y.GetAttribute("LocalizedControlType").ToString() == "text")
+                                                        {
+                                                            row = y.GetAttribute("BoundingRectangle").ToString();
+                                                        }
+                                                        else
+                                                        {
+                                                            Console.WriteLine("No such elements");
+                                                        }
+                                                    }
+                                                    row = ParseCoordinates(row).Groups[2].ToString();
+                                                    break;
+                                                case "Cell":
+                                                    Console.WriteLine("Cell");
+                                                    SysListView32 = Window.FindElement(By.ClassName("SysListView32"));
+                                                    Console.WriteLine(GETSTRING(item.Key));
+                                                    Window.Click();
+                                                    IWebElement col = SysListView32.FindElement(By.Name(GETSTRING(item.Key)));
+                                                    cell = ParseCoordinates(col.GetAttribute("BoundingRectangle").ToString());
+                                                    MatchSysTreeView32 = ParseCoordinates(SysListView32.GetAttribute("BoundingRectangle").ToString());
+                                                    new Actions(driver).MoveToElement(SysListView32, ((Convert.ToInt32(cell.Groups[1].ToString()) - Convert.ToInt32(MatchSysTreeView32.Groups[1].ToString())) + Convert.ToInt32(cell.Groups[3].ToString()) / 2), ((Convert.ToInt32(row) - Convert.ToInt32(MatchSysTreeView32.Groups[2].ToString())) + Convert.ToInt32(cell.Groups[4].ToString()) / 2)).Click().Perform();
+                                                    Thread.Sleep(1000);
+                                                    IWebElement res = driver.SwitchTo().ActiveElement();
+                                                    Console.WriteLine(res.GetAttribute("Name"));
+                                                    WriteToSTS(res.GetAttribute("Name"));
+                                                    Thread.Sleep(100);
+                                                    WriteToSTS("SERVER: EOF");
+                                                    sr.Close();
+                                                    File.Delete(CMDFile);
+                                                    break;
+                                                default:
+                                                    Console.WriteLine("Write -> default");
+                                                    break;
+                                            }
                                         }
-                                    }
                                     WriteCommandDictionary.Clear();
+                                    sr.Close();
+                                    File.Delete(CMDFile); //umcomment
                                     break;
                                 case "CREATESESSION":
                                     Console.WriteLine("!!!CREATESESSION");
@@ -321,24 +398,44 @@ namespace Read_sts_file
                                     WriteToSTS("SERVER: INFO: Configuring session" + match.Groups["wparam"].Value.ToString() + "HASVP key to 1");
                                     Thread.Sleep(100);
                                     File.Delete(CMDFile);
-                                    return;
+                                    break;
                                 case "STARTSESSION":
                                     Console.WriteLine("!!!STARTSESSION");
                                     match = ParseSession(match.Groups["lparam"].Value.ToString());
-                                    CommonProc.LaunchDBP(match.Groups["username"].Value.ToString(), match.Groups["password"].Value.ToString(), parameters); 
-
-                                    //File.Delete(CMDFile); //umcomment
-                                    return;
+                                    CommonProc.LaunchDBP(match.Groups["username"].Value.ToString(), match.Groups["password"].Value.ToString(), parameters);
+                                    sr.Close();
+                                    File.Delete(CMDFile); //umcomment
+                                    Thread.Sleep(100);
+                                    break;
                                case "STOPSESSION":
                                     Console.WriteLine("!!!STOPSESSION");
                                     driver.FindElementById("Close").Click();
-                                    //File.Delete(CMDFile); //umcomment
-                                    return;
+                                    sr.Close();
+                                    File.Delete(CMDFile); //umcomment
+                                    break;
                                case "SETSESSION":
                                     Console.WriteLine("!!!SETSESSION");
-                                    driver.FindElement(By.Name(parameters + " - " + GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))).Click(); //switch to window???
-                                    return;
-                            }
+                                    //driver.FindElement(By.Name(parameters + " - " + GETSTRING("IDS_DLG_MITEL_DB_PROGRAMMING"))).Click(); //switch to window???
+                                    break;
+                               case "ECHO":
+                                    Console.WriteLine("!!!ECHO");
+                                    switch (parameters)
+                                    {
+                                        case "Synchronize":
+                                            Console.WriteLine("Echo -> Synchronize");
+                                            WriteToSTS("Synchronize");
+                                            WriteToSTS("SERVER: EOF");
+                                            Console.WriteLine("writeSTS");
+                                            sr.Close();
+                                            File.Delete(CMDFile); //umcomment
+                                            Console.WriteLine("File delete");
+                                            break;
+                                        default:
+                                            Console.WriteLine("Write -> default");
+                                            break;
+                                    }
+                                    break;
+                             }
                         }
                     }
                     sr.Close();
@@ -400,13 +497,23 @@ namespace Read_sts_file
             }
         }
 
+        public static Match ParseCoordinates(string line)
+        {
+            Regex reg = new Regex(
+             "([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
+            // "\\u005b\\u0022(?<command>[A-Za-z0-9 _]+)\\u0022(,\\u0022(?<wparam>[^\\u0022]+)\\u0022)?(,(?<lparam>(\\u0022[^\\u0022]+\\u0022)|(\\u007b[^\\u007d]+\\u007d)))?\\u005d");
+            //       {    "      ADDRESS       "        =>        "              IDS_ROW_SYSTEM   "   ,    "       TYPE       "       =>         "     SubView       "       },{"ADDRESS"=>"IDS_ROW_IP
+            Match match = reg.Match(line);
+            return match;
+
+        }
 
 
         public static void Main()
         {
-            windowsCount = GETListOfWindows().Count;           
-            //EmulateVTServer();
-            CommonProc.LaunchDBP("admin", "root123", "HX01");
+            //windowsCount = GETListOfWindows().Count;           //after start
+            EmulateVTServer();
+            //bool rrrr = CommonProc.LaunchDBP("admin", "root123", "HX01");
             //Test();
             /*
             Console.WriteLine("start sess");
